@@ -42,18 +42,19 @@ class _RepartidorHomeState extends State<RepartidorHome> {
       return;
     }
 
-    final currentCantidad = productoData["cantidad"] ?? 0;
+    // 🔹 Usamos 'stock' en lugar de 'cantidad'
+final stock = productoData.data()?["stock"];
+final currentStock = int.tryParse(stock?.toString() ?? "0") ?? 0;
 
-    // Actualizar stock según salida o entrada
-    int nuevaCantidad = currentCantidad;
+    int nuevoStock = currentStock;
     if (_isSalida) {
-      nuevaCantidad = currentCantidad - cantidad;
-      if (nuevaCantidad < 0) nuevaCantidad = 0;
+      nuevoStock = currentStock - cantidad;
+      if (nuevoStock < 0) nuevoStock = 0;
     } else {
-      nuevaCantidad = currentCantidad + cantidad;
+      nuevoStock = currentStock + cantidad;
     }
 
-    await productoDoc.update({"cantidad": nuevaCantidad});
+    await productoDoc.update({"stock": nuevoStock});
 
     // Guardar movimiento
     await FirebaseFirestore.instance
@@ -65,10 +66,7 @@ class _RepartidorHomeState extends State<RepartidorHome> {
       "cantidad": cantidad,
       "fecha": FieldValue.serverTimestamp(),
       "repartidorId": user?.uid,
-      "tipo": {
-        "entrada": !_isSalida,
-        "salida": _isSalida,
-      }
+      "tipo": _isSalida ? "salida" : "entrada",
     });
 
     _cantidadController.clear();
@@ -81,7 +79,6 @@ class _RepartidorHomeState extends State<RepartidorHome> {
     );
   }
 
-  // Widget pestaña 1: Registro de movimientos
   Widget _buildMovimientosTab() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -107,9 +104,11 @@ class _RepartidorHomeState extends State<RepartidorHome> {
                   });
                 },
                 items: productos.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>?; 
+                  final stock = int.tryParse(data?["stock"]?.toString() ?? "0") ?? 0;
                   return DropdownMenuItem<String>(
                     value: doc.id,
-                    child: Text("${doc["nombre"]} (Stock: ${doc["cantidad"]})"),
+                   child: Text("${doc["nombre"]} (Stock: $stock)"),
                   );
                 }).toList(),
               );
@@ -154,7 +153,6 @@ class _RepartidorHomeState extends State<RepartidorHome> {
     );
   }
 
-  // Widget pestaña 2: Lista de clientes
   Widget _buildClientesTab() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -180,7 +178,6 @@ class _RepartidorHomeState extends State<RepartidorHome> {
     );
   }
 
-  // Widget pestaña 3: Reportes del repartidor
   Widget _buildReportesTab() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -210,7 +207,6 @@ class _RepartidorHomeState extends State<RepartidorHome> {
     );
   }
 
-  // Widget pestaña 4: Pedidos pendientes
   Widget _buildPedidosTab() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
