@@ -8,7 +8,7 @@ import '../screens/auth/administrador/admin_home.dart';
 import '../screens/auth/ventanilla/ventanilla_home.dart';
 
 class HomeRouter extends StatefulWidget {
-  const HomeRouter({Key? key}) : super(key: key);
+  const HomeRouter({super.key});
 
   @override
   State<HomeRouter> createState() => _HomeRouterState();
