@@ -167,9 +167,16 @@ class _AdminHomeState extends State<AdminHome> with SingleTickerProviderStateMix
   final TextEditingController buscarProductoCtrl = TextEditingController();
 
   // Clientes
-  final TextEditingController clienteNombreCtrl = TextEditingController();
-  final TextEditingController clienteTelCtrl = TextEditingController();
-  final TextEditingController buscarClienteCtrl = TextEditingController();
+ // Clientes
+final TextEditingController clienteNombreCtrl = TextEditingController();
+final TextEditingController clienteTelCtrl = TextEditingController();
+final TextEditingController clienteCorreoCtrl = TextEditingController();
+final TextEditingController clienteDireccionCtrl = TextEditingController();
+final TextEditingController clienteNotasCtrl = TextEditingController();
+final TextEditingController clienteGarrafonesCtrl = TextEditingController();
+
+final TextEditingController buscarClienteCtrl = TextEditingController();
+
 
   // Ventas / Movimientos (registro desde admin)
   String? clienteSeleccionado;
@@ -282,16 +289,80 @@ class _AdminHomeState extends State<AdminHome> with SingleTickerProviderStateMix
       .doc(widget.empresaCodigo)
       .collection('Clientes');
 
-  Future<void> _agregarCliente() async {
-    if (clienteNombreCtrl.text.isEmpty) return;
-    await clientesRef().add({
-      'nombre': clienteNombreCtrl.text.trim(),
-      'telefono': clienteTelCtrl.text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+ Future<void> _agregarCliente() async {
+  if (clienteNombreCtrl.text.isEmpty) return;
+
+  await clientesRef().add({
+    'nombre': clienteNombreCtrl.text.trim(),
+    'telefono': clienteTelCtrl.text.trim(),
+    'correo': clienteCorreoCtrl.text.trim(),
+    'direccion': clienteDireccionCtrl.text.trim(),
+    'notas': clienteNotasCtrl.text.trim(),
+    'garrafonesRN': int.tryParse(clienteGarrafonesCtrl.text.trim()) ?? 0,
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+
+  Future<void> _editarCliente(String id, Map<String, dynamic> data) async {
+      clienteNombreCtrl.text = data['nombre'] ?? '';
+      clienteTelCtrl.text = data['telefono'] ?? '';
+      clienteCorreoCtrl.text = data['correo'] ?? '';
+      clienteDireccionCtrl.text = data['direccion'] ?? '';
+      clienteNotasCtrl.text = data['notas'] ?? '';
+      clienteGarrafonesCtrl.text = (data['garrafonesRN'] ?? 0).toString();
+
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            title: Text("✏️ Editar Cliente", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  TextField(controller: clienteNombreCtrl, decoration: const InputDecoration(labelText: "Nombre")),
+                  TextField(controller: clienteTelCtrl, decoration: const InputDecoration(labelText: "Teléfono")),
+                  TextField(controller: clienteCorreoCtrl, decoration: const InputDecoration(labelText: "Correo")),
+                  TextField(controller: clienteDireccionCtrl, decoration: const InputDecoration(labelText: "Dirección")),
+                  TextField(controller: clienteNotasCtrl, decoration: const InputDecoration(labelText: "Notas")),
+                  TextField(controller: clienteGarrafonesCtrl, decoration: const InputDecoration(labelText: "Garrafones RN"), keyboardType: TextInputType.number),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("Cancelar"),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                onPressed: () async {
+                  await clientesRef().doc(id).update({
+                    'nombre': clienteNombreCtrl.text.trim(),
+                    'telefono': clienteTelCtrl.text.trim(),
+                    'correo': clienteCorreoCtrl.text.trim(),
+                    'direccion': clienteDireccionCtrl.text.trim(),
+                    'notas': clienteNotasCtrl.text.trim(),
+                    'garrafonesRN': int.tryParse(clienteGarrafonesCtrl.text) ?? 0,
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  });
+                  Navigator.pop(context);
+                },
+                child: Text("Guardar", style: GoogleFonts.poppins(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      );
+    }
+
     clienteNombreCtrl.clear();
     clienteTelCtrl.clear();
-  }
+    clienteCorreoCtrl.clear();
+    clienteDireccionCtrl.clear();
+    clienteNotasCtrl.clear();
+    clienteGarrafonesCtrl.clear();
+}
+
 
   // ---------------- Movimientos / Ventas (registrar desde admin) ----------------
   CollectionReference movimientosRef() => FirebaseFirestore.instance
@@ -432,75 +503,88 @@ class _AdminHomeState extends State<AdminHome> with SingleTickerProviderStateMix
 
   // Modal para agregar cliente
   Future<void> _showAddClientModal() async {
-    clienteNombreCtrl.clear();
-    clienteTelCtrl.clear();
+  clienteNombreCtrl.clear();
+  clienteTelCtrl.clear();
+  clienteCorreoCtrl.clear();
+  clienteDireccionCtrl.clear();
+  clienteNotasCtrl.clear();
+  clienteGarrafonesCtrl.clear();
 
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-            ),
-            padding: const EdgeInsets.all(18),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+          ),
+          padding: const EdgeInsets.all(18),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('➕ Agregar Cliente', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        TextField(controller: clienteNombreCtrl, decoration: const InputDecoration(labelText: 'Nombre')),
+                        const SizedBox(height: 8),
+                        TextField(controller: clienteTelCtrl, decoration: const InputDecoration(labelText: 'Teléfono'), keyboardType: TextInputType.phone),
+                        const SizedBox(height: 8),
+                        TextField(controller: clienteCorreoCtrl, decoration: const InputDecoration(labelText: 'Correo')),
+                        const SizedBox(height: 8),
+                        TextField(controller: clienteDireccionCtrl, decoration: const InputDecoration(labelText: 'Dirección')),
+                        const SizedBox(height: 8),
+                        TextField(controller: clienteNotasCtrl, decoration: const InputDecoration(labelText: 'Notas')),
+                        const SizedBox(height: 8),
+                        TextField(controller: clienteGarrafonesCtrl, decoration: const InputDecoration(labelText: 'Garrafones RN'), keyboardType: TextInputType.number),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text('➕ Agregar Cliente', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 10),
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        children: [
-                          TextField(controller: clienteNombreCtrl, decoration: const InputDecoration(labelText: 'Nombre')),
-                          const SizedBox(height: 8),
-                          TextField(controller: clienteTelCtrl, decoration: const InputDecoration(labelText: 'Teléfono'), keyboardType: TextInputType.phone),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar', style: GoogleFonts.poppins())),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
-                        onPressed: () async {
-                          await _agregarCliente();
-                          if (mounted) Navigator.pop(context);
-                        },
-                        child: Text('Guardar', style: GoogleFonts.poppins(color: Colors.white)),
-                      )
-                    ],
-                  )
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar', style: GoogleFonts.poppins())),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                      onPressed: () async {
+                        await _agregarCliente();
+                        if (mounted) Navigator.pop(context);
+                      },
+                      child: Text('Guardar', style: GoogleFonts.poppins(color: Colors.white)),
+                    )
+                  ],
+                )
+              ],
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
 
   // Modal para registrar movimiento (igual que la pestaña, pero en modal para FAB)
   Future<void> _showRegisterMovementModal() async {
@@ -805,7 +889,7 @@ class _AdminHomeState extends State<AdminHome> with SingleTickerProviderStateMix
       ),
     );
   }
-
+  
   Widget _buildClientesTab() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -839,18 +923,74 @@ class _AdminHomeState extends State<AdminHome> with SingleTickerProviderStateMix
                   itemBuilder: (context, i) {
                     final d = docs[i];
                     final data = d.data() as Map<String, dynamic>;
+                    void onEdit(String id, Map<String, dynamic> data) {
+                    print("Editar cliente $id");
+                    print(data);
+                  }
                     return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      child: ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: secondaryColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-                          child: const Icon(Icons.person, color: secondaryColor),
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            // Ícono
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.person_outline, color: primaryColor, size: 28),
+                            ),
+                            const SizedBox(width: 14),
+
+                            // Información del cliente
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    data['nombre'] ?? 'Sin nombre',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 4),
+
+                                  Text(
+                                    data['direccion'] ?? 'Sin dirección',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 6),
+
+                                  Text(
+                                    "Garrafones RN: ${data['garrafonesRN'] ?? 0}",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      color: secondaryColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Botón editar
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              color: primaryColor,
+                              onPressed: () => onEdit(d.id, data),
+                            ),
+                          ],
                         ),
-                        title: Text(data['nombre'] ?? '', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                        subtitle: Text('Tel: ${data['telefono'] ?? ''}', style: GoogleFonts.poppins(color: Colors.grey[600])),
                       ),
                     );
                   },

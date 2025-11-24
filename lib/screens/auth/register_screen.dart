@@ -30,7 +30,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return List.generate(6, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
-  // Registro
+  // REGISTRO
   Future<void> _registerUser() async {
     if (_nombreCtrl.text.isEmpty ||
         _apellidoCtrl.text.isEmpty ||
@@ -45,7 +45,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _loading = true);
 
     try {
-      // Crear usuario
+      // CREAR USUARIO AUTH
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text.trim(),
@@ -58,6 +58,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final apellido = _apellidoCtrl.text.trim();
       final email = _emailCtrl.text.trim();
 
+      // ------------------------------------------
+      // ADMIN → CREA EMPRESA + SUBCOLECCIONES
+      // ------------------------------------------
       if (_selectedRole == 'admin') {
         final empresaNombre = _empresaCtrl.text.trim();
 
@@ -66,29 +69,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SnackBar(content: Text('Debes ingresar el nombre de la empresa.')),
           );
 
-          // Evita crashear en Android
-          await FirebaseAuth.instance.currentUser
-              ?.delete()
-              .catchError((_) {});
-
+          await FirebaseAuth.instance.currentUser?.delete().catchError((_) {});
           setState(() => _loading = false);
           return;
         }
 
         final codigoEmpresa = _generarCodigoEmpresa();
+        final empresaRef =
+            FirebaseFirestore.instance.collection('empresas').doc(codigoEmpresa);
 
-        // Crear empresa
-        await FirebaseFirestore.instance
-            .collection('empresas')
-            .doc(codigoEmpresa)
-            .set({
+        // 1. Crear empresa
+        await empresaRef.set({
           'nombre': empresaNombre,
           'codigo': codigoEmpresa,
           'adminUid': uid,
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        // Crear usuario admin
+        // 2. Crear subcolecciones iniciales
+        await empresaRef.collection('productos').doc('default').set({
+          'init': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        await empresaRef.collection('Clientes').doc('default').set({
+          'init': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        await empresaRef.collection('pedidos').doc('default').set({
+          'init': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        await empresaRef.collection('movimientos').doc('default').set({
+          'init': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // 3. Crear usuario admin
         await usersRef.doc(uid).set({
           'nombre': nombre,
           'apellido': apellido,
@@ -100,7 +119,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
       }
 
-      // Si NO es admin
+      // ------------------------------------------
+      // EMPLEADOS (repartidor / ventanilla)
+      // ------------------------------------------
       else {
         final codigo = _codigoCtrl.text.trim();
 
@@ -109,14 +130,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SnackBar(content: Text('Debes ingresar el código de la empresa.')),
           );
 
-          await FirebaseAuth.instance.currentUser
-              ?.delete()
-              .catchError((_) {});
+          await FirebaseAuth.instance.currentUser?.delete().catchError((_) {});
           setState(() => _loading = false);
           return;
         }
 
-        // Validar empresa
         final empresaSnap = await FirebaseFirestore.instance
             .collection('empresas')
             .doc(codigo)
@@ -127,14 +145,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SnackBar(content: Text('El código de empresa no es válido.')),
           );
 
-          await FirebaseAuth.instance.currentUser
-              ?.delete()
-              .catchError((_) {});
+          await FirebaseAuth.instance.currentUser?.delete().catchError((_) {});
           setState(() => _loading = false);
           return;
         }
 
-        // Registrar usuario normal
         await usersRef.doc(uid).set({
           'nombre': nombre,
           'apellido': apellido,
@@ -149,15 +164,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
-    }  on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ERROR FIREBASE AUTH: ${e.code} – ${e.message}'),
-        ),
+        SnackBar(content: Text('ERROR FIREBASE AUTH: ${e.code} — ${e.message}')),
       );
-      print('🔥 ERROR AUTH: ${e.code} – ${e.message}');
-    }
-       finally {
+    } finally {
       setState(() => _loading = false);
     }
   }
@@ -178,8 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
       appBar: AppBar(
-        title: Text('Crear cuenta',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        title: Text('Crear cuenta', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black87,
@@ -224,21 +234,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Rol
             Row(
               children: [
-                Text('Rol:',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                Text('Rol:', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
                 const SizedBox(width: 8),
                 DropdownButton<String>(
                   value: _selectedRole,
                   items: const [
-                    DropdownMenuItem(
-                        value: 'repartidor', child: Text('Repartidor')),
-                    DropdownMenuItem(
-                        value: 'ventanilla', child: Text('Ventanilla')),
-                    DropdownMenuItem(
-                        value: 'admin', child: Text('Administrador')),
+                    DropdownMenuItem(value: 'repartidor', child: Text('Repartidor')),
+                    DropdownMenuItem(value: 'ventanilla', child: Text('Ventanilla')),
+                    DropdownMenuItem(value: 'admin', child: Text('Administrador')),
                   ],
                   onChanged: (v) => setState(() => _selectedRole = v!),
                 ),
@@ -275,33 +280,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: ElevatedButton(
                 onPressed: _loading ? null : _registerUser,
                 style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   backgroundColor: const Color(0xFF0066FF),
                 ),
                 child: _loading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text('Crear cuenta',
-                        style: GoogleFonts.inter(
-                            fontSize: 16, fontWeight: FontWeight.w600)),
+                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             ),
 
-            
             const SizedBox(height: 16),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text("¿Ya tienes una cuenta?"),
                 TextButton(
                   onPressed: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()));
+                    Navigator.push(
+                        context, MaterialPageRoute(builder: (_) => const LoginScreen()));
                   },
                   child: const Text(
                     'Inicia sesión',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.blue),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
                   ),
                 ),
               ],
