@@ -725,7 +725,7 @@ class MovimientosWidget extends StatelessWidget {
         return ListView.builder(
           itemCount: docs.length,
           itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
+            final data = docs[index].data();
 
             String producto = data["producto"] ?? "Sin nombre";
             bool salida = data["salida"] ?? false;
@@ -770,14 +770,3 @@ class MovimientosWidget extends StatelessWidget {
   }
 }
 
-  InputDecoration _inputStyle() {
-    return InputDecoration(
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    );
-  }

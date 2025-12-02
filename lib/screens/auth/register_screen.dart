@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/gestures.dart';
 import 'login_screen.dart';
 import '../widgets/animated_background.dart'; // AJUSTA LA RUTA A LA TUYA
 

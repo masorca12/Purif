@@ -210,11 +210,7 @@ class _AdminHomeState extends State<AdminHome> with SingleTickerProviderStateMix
     return double.tryParse(v.toString()) ?? 0.0;
   }
 
-  Future<void> _cerrarSesion() async {
-    await FirebaseAuth.instance.signOut();
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-  }
+
 
   // ---------------- Productos (Colección y funciones) ----------------
   CollectionReference productosRef() => FirebaseFirestore.instance

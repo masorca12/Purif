@@ -938,15 +938,7 @@ void _showAddMovimientoModal(BuildContext context) {
     );
   }
 
-  // Utilidad Formato Fecha
-  String _formatDate(dynamic timestamp) {
-    if (timestamp == null) return "";
-    if (timestamp is Timestamp) {
-      DateTime d = timestamp.toDate();
-      return "${d.day}/${d.month}/${d.year}";
-    }
-    return "";
-  }
+
 
   // Estilo Inputs Modal
   InputDecoration _inputStyle() {
