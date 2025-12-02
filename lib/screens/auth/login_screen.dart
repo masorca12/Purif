@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'register_screen.dart'; // Importa la pantalla de registro
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/animated_background.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -71,10 +72,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+ 
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+Widget build(BuildContext context) {
+  return AnimatedBackground(
+    child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -111,44 +115,52 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey[600],
+                  color: const Color.fromARGB(255, 255, 255, 255),
                 ),
               ),
               const SizedBox(height: 24),
 
               TextField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: 'correo@dominio.com',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(color: Colors.white), // texto blanco
+              decoration: InputDecoration(
+                hintText: 'correo@dominio.com',
+                hintStyle: const TextStyle(color: Colors.white70), // hint blanco tenue
+                
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.white, width: 2),
                 ),
               ),
-              const SizedBox(height: 16),
+            ),
 
-              TextField(
-                controller: passCtrl,
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: 'Contraseña',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: passCtrl,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Contraseña',
+                hintStyle: const TextStyle(color: Colors.white70),
+
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.white, width: 2),
                 ),
               ),
-              const SizedBox(height: 24),
+            ),
+
+            const SizedBox(height: 24),
 
               ElevatedButton(
                 onPressed: loading ? null : login,
@@ -165,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 24,
                         width: 24,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: Color.fromARGB(255, 255, 255, 255),
                           strokeWidth: 3,
                         ),
                       )
@@ -175,12 +187,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
               Row(
                 children: [
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text('o', style: TextStyle(color: Colors.grey[500])),
+                  Expanded(child: Divider(color: const Color.fromARGB(255, 255, 255, 255))),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text('o'),
                   ),
-                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Expanded(child: Divider(color: const Color.fromARGB(255, 255, 255, 255))),
                 ],
               ),
               const SizedBox(height: 24),
@@ -194,10 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: BorderSide(color: Colors.grey.shade300),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
+                  side: BorderSide(color: const Color.fromARGB(255, 255, 255, 255)),
                 ),
               ),
               const Spacer(flex: 3),
@@ -207,13 +216,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    style: TextStyle(color: const Color.fromARGB(255, 255, 255, 255), fontSize: 14),
                     children: [
                       const TextSpan(text: '¿No tienes una cuenta? '),
                       TextSpan(
                         text: 'Regístrate',
                         style: const TextStyle(
-                          color: Colors.blue,
+                          color: Color.fromARGB(255, 2, 43, 76),
                           fontWeight: FontWeight.bold,
                           decoration: TextDecoration.underline,
                         ),
@@ -231,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextSpan(
                         text: 'Aviso de privacidad',
                         style: const TextStyle(
-                          color: Colors.blue,
+                          color:  Color.fromARGB(255, 2, 43, 76),
                           fontWeight: FontWeight.bold,
                           decoration: TextDecoration.underline,
                         ),
@@ -246,6 +255,8 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }

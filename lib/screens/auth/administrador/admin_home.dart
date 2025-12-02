@@ -1,10 +1,12 @@
-// admin_home.dart (DISEÑO MODERNO APLICADO, LÓGICA ORIGINAL MANTENIDA)
+// admin_home.dart (DISEÑO MODERNO CON HISTORIAL DE CORTES INTEGRADO)
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// Asegúrate de tener estas importaciones o comenta si no las usas por ahora
 import 'movimientos_repartidor.dart';
 import 'movimientos_ventanilla.dart';
+import '../../widgets/animated_background.dart';
 
 /// ------------------- COLORES / ESTILOS -------------------
 const Color primaryColor = Color(0xFF3B82F6); // Azul principal
@@ -12,6 +14,7 @@ const Color secondaryColor = Color(0xFF60A5FA); // Azul claro secundario
 const Color backgroundColor = Color(0xFFF5F7FA); // Fondo claro suave
 const Color stockLowColor = Colors.redAccent;
 const Color stockOkColor = Color(0xFF2ECC71);
+const Color reportColor = Color(0xFF2E7D32); // Verde para reportes/excel
 
 // ------------------- WIDGETS AUXILIARES DE DISEÑO -------------------
 
@@ -167,16 +170,13 @@ class _AdminHomeState extends State<AdminHome> with SingleTickerProviderStateMix
   final TextEditingController buscarProductoCtrl = TextEditingController();
 
   // Clientes
- // Clientes
-final TextEditingController clienteNombreCtrl = TextEditingController();
-final TextEditingController clienteTelCtrl = TextEditingController();
-final TextEditingController clienteCorreoCtrl = TextEditingController();
-final TextEditingController clienteDireccionCtrl = TextEditingController();
-final TextEditingController clienteNotasCtrl = TextEditingController();
-final TextEditingController clienteGarrafonesCtrl = TextEditingController();
-
-final TextEditingController buscarClienteCtrl = TextEditingController();
-
+  final TextEditingController clienteNombreCtrl = TextEditingController();
+  final TextEditingController clienteTelCtrl = TextEditingController();
+  final TextEditingController clienteCorreoCtrl = TextEditingController();
+  final TextEditingController clienteDireccionCtrl = TextEditingController();
+  final TextEditingController clienteNotasCtrl = TextEditingController();
+  final TextEditingController clienteGarrafonesCtrl = TextEditingController();
+  final TextEditingController buscarClienteCtrl = TextEditingController();
 
   // Ventas / Movimientos (registro desde admin)
   String? clienteSeleccionado;
@@ -289,18 +289,26 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
       .doc(widget.empresaCodigo)
       .collection('Clientes');
 
- Future<void> _agregarCliente() async {
-  if (clienteNombreCtrl.text.isEmpty) return;
+  Future<void> _agregarCliente() async {
+    if (clienteNombreCtrl.text.isEmpty) return;
 
-  await clientesRef().add({
-    'nombre': clienteNombreCtrl.text.trim(),
-    'telefono': clienteTelCtrl.text.trim(),
-    'correo': clienteCorreoCtrl.text.trim(),
-    'direccion': clienteDireccionCtrl.text.trim(),
-    'notas': clienteNotasCtrl.text.trim(),
-    'garrafonesRN': int.tryParse(clienteGarrafonesCtrl.text.trim()) ?? 0,
-    'createdAt': FieldValue.serverTimestamp(),
-  });
+    await clientesRef().add({
+      'nombre': clienteNombreCtrl.text.trim(),
+      'telefono': clienteTelCtrl.text.trim(),
+      'correo': clienteCorreoCtrl.text.trim(),
+      'direccion': clienteDireccionCtrl.text.trim(),
+      'notas': clienteNotasCtrl.text.trim(),
+      'garrafonesRN': int.tryParse(clienteGarrafonesCtrl.text.trim()) ?? 0,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    // Limpiar controles
+    clienteNombreCtrl.clear();
+    clienteTelCtrl.clear();
+    clienteCorreoCtrl.clear();
+    clienteDireccionCtrl.clear();
+    clienteNotasCtrl.clear();
+    clienteGarrafonesCtrl.clear();
+  }
 
   Future<void> _editarCliente(String id, Map<String, dynamic> data) async {
       clienteNombreCtrl.text = data['nombre'] ?? '';
@@ -331,7 +339,7 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text("Cancelar"),
+                child: const Text("Cancelar"),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
@@ -347,22 +355,13 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
                   });
                   Navigator.pop(context);
                 },
-                child: Text("Guardar", style: GoogleFonts.poppins(color: Colors.white)),
+                child: Text("Guardar", style: GoogleFonts.poppins(color:Colors.white)),
               ),
             ],
           );
         },
       );
     }
-
-    clienteNombreCtrl.clear();
-    clienteTelCtrl.clear();
-    clienteCorreoCtrl.clear();
-    clienteDireccionCtrl.clear();
-    clienteNotasCtrl.clear();
-    clienteGarrafonesCtrl.clear();
-}
-
 
   // ---------------- Movimientos / Ventas (registrar desde admin) ----------------
   CollectionReference movimientosRef() => FirebaseFirestore.instance
@@ -586,7 +585,7 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
 }
 
 
-  // Modal para registrar movimiento (igual que la pestaña, pero en modal para FAB)
+  // Modal para registrar movimiento (CORREGIDO)
   Future<void> _showRegisterMovementModal() async {
     movCantidadCtrl.clear();
     movPrecioCtrl.clear();
@@ -626,15 +625,20 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
                       padding: const EdgeInsets.all(12.0),
                       child: Column(
                         children: [
+                          // ---------------- CORRECCIÓN AQUÍ (CLIENTE) ----------------
                           StreamBuilder<QuerySnapshot>(
                             stream: clientesRef().snapshots(),
                             builder: (context, snapC) {
                               if (!snapC.hasData) return const SizedBox();
                               final clientes = snapC.data!.docs;
                               final items = clientes.map((c) => (c['nombre'] ?? '').toString()).toList();
+
                               return DropdownButtonFormField<String>(
-                                decoration: const InputDecoration(labelText: 'Cliente'),
-                                isExpanded: true,
+                                isExpanded: true, // <--- SE MOVIÓ AQUÍ (FUERA DE DECORATION)
+                                decoration: const InputDecoration(
+                                  labelText: 'Cliente', 
+                                  border: OutlineInputBorder()
+                                ),
                                 hint: const Text('Seleccionar cliente'),
                                 value: clienteSeleccionado,
                                 items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
@@ -643,15 +647,21 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
                             },
                           ),
                           const SizedBox(height: 8),
+
+                          // ---------------- CORRECCIÓN AQUÍ (PRODUCTO) ----------------
                           StreamBuilder<QuerySnapshot>(
                             stream: productosRef().snapshots(),
                             builder: (context, snapP) {
                               if (!snapP.hasData) return const SizedBox();
                               final productos = snapP.data!.docs;
                               final items = productos.map((p) => (p['nombre'] ?? '').toString()).toList();
+
                               return DropdownButtonFormField<String>(
-                                decoration: const InputDecoration(labelText: 'Producto'),
-                                isExpanded: true,
+                                isExpanded: true, // <--- SE MOVIÓ AQUÍ (FUERA DE DECORATION)
+                                decoration: const InputDecoration(
+                                  labelText: 'Producto', 
+                                  border: OutlineInputBorder()
+                                ),
                                 hint: const Text('Seleccionar producto'),
                                 value: productoSeleccionado,
                                 items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
@@ -660,12 +670,14 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
                             },
                           ),
                           const SizedBox(height: 8),
-                          TextField(controller: movCantidadCtrl, decoration: const InputDecoration(labelText: 'Cantidad'), keyboardType: TextInputType.number),
+                          
+                          // El resto sigue igual...
+                          TextField(controller: movCantidadCtrl, decoration: const InputDecoration(labelText: 'Cantidad', border: OutlineInputBorder()), keyboardType: TextInputType.number),
                           const SizedBox(height: 8),
-                          TextField(controller: movPrecioCtrl, decoration: const InputDecoration(labelText: 'Precio unitario (opcional)', prefixText: '\$'), keyboardType: TextInputType.number),
+                          TextField(controller: movPrecioCtrl, decoration: const InputDecoration(labelText: 'Precio unitario (opcional)', prefixText: '\$', border: OutlineInputBorder()), keyboardType: TextInputType.number),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(labelText: 'Método de Pago'),
+                            decoration: const InputDecoration(labelText: 'Método de Pago', border: OutlineInputBorder()),
                             value: movMetodoPago,
                             items: const [
                               DropdownMenuItem(value: 'Efectivo', child: Text('Efectivo')),
@@ -675,19 +687,19 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
                           ),
                           const SizedBox(height: 8),
                           Row(children: [
-                            Text('Origen:', style: GoogleFonts.poppins()),
+                            Text('Origen:', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                             const SizedBox(width: 12),
                             ChoiceChip(
                               label: const Text('Ventanilla'),
                               selected: movOrigen == 'ventanilla',
-                              selectedColor: primaryColor.withOpacity(0.15),
+                              selectedColor: primaryColor.withOpacity(0.12),
                               onSelected: (_) => setState(() => movOrigen = 'ventanilla'),
                             ),
                             const SizedBox(width: 8),
                             ChoiceChip(
                               label: const Text('Repartidor'),
                               selected: movOrigen == 'repartidor',
-                              selectedColor: primaryColor.withOpacity(0.15),
+                              selectedColor: primaryColor.withOpacity(0.12),
                               onSelected: (_) => setState(() => movOrigen = 'repartidor'),
                             ),
                           ]),
@@ -719,29 +731,40 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
 
   // ------------------ BUILD ------------------
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor,
+@override
+Widget build(BuildContext context) {
+  return AnimatedBackground(
+    child: Scaffold(
+      backgroundColor: Colors.transparent,
+
       // AppBar limpio
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 1,
         automaticallyImplyLeading: false,
-        title: Text('Panel de Administración', style: GoogleFonts.poppins(color: Colors.black87, fontWeight: FontWeight.w700)),
+        title: Text(
+          'Panel de Administración',
+          style: GoogleFonts.poppins(
+            color: Colors.black87,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            color: stockLowColor,
-            tooltip: 'Cerrar sesión',
-            onPressed: _cerrarSesion,
-          ),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            },
+          )
         ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: primaryColor,
           labelColor: primaryColor,
-          unselectedLabelColor: Colors.grey[600],
+          unselectedLabelColor: Colors.black,
           labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
           tabs: const [
             Tab(text: 'Productos'),
@@ -750,6 +773,7 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
           ],
         ),
       ),
+      
       body: Column(
         children: [
           // Banner con código de empresa
@@ -761,32 +785,38 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
               child: ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: primaryColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: const Icon(Icons.label, color: primaryColor),
                 ),
-                title: Text('Empresa: ${widget.empresaCodigo}', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
-                subtitle: Text('Panel de administración', style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12)),
+                title: Text(
+                  'Empresa: ${widget.empresaCodigo}',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  'Panel de administración',
+                  style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 12),
+                ),
               ),
             ),
           ),
+
           // Contenido principal (Tabs)
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                // ---------- Productos (MEJORADO) ----------
                 _buildProductsTab(),
-
-                // ---------- Clientes ----------
                 _buildClientesTab(),
-
-                // ---------- Movimientos ----------
                 _buildMovimientosTab(),
               ],
             ),
           ),
         ],
       ),
+
       // FAB dinámico según pestaña
       floatingActionButton: _tabController.index == 0
           ? FloatingActionButton.extended(
@@ -808,17 +838,20 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
                   icon: const Icon(Icons.save_outlined, color: Colors.white),
                   backgroundColor: primaryColor,
                 ),
-    );
-  }
+    ),
+  );
+}
+
 
   // ------------------ PESTAÑAS (SEPARADAS PARA CLARIDAD) ------------------
 
   Widget _buildProductsTab() {
-    return Padding(
+    return AnimatedBackground(
+      child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Column(
         children: [
-          // Resumen ejecutivo (se actualiza vía stream más abajo)
+          // Resumen ejecutivo
           StreamBuilder<QuerySnapshot>(
             stream: productosRef().snapshots(),
             builder: (context, snapshot) {
@@ -837,11 +870,11 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
               }
               return Row(
                 children: [
-                  _buildSummaryWidget(title: 'Unidades en stock', value: totalStock.toString(), icon: Icons.inventory_2, color: secondaryColor),
+                  _buildSummaryWidget(title: 'Unidades', value: totalStock.toString(), icon: Icons.inventory_2, color: secondaryColor),
                   const SizedBox(width: 8),
-                  _buildSummaryWidget(title: 'Stock crítico', value: criticalStock.toString(), icon: Icons.warning_amber_rounded, color: stockLowColor),
+                  _buildSummaryWidget(title: 'Crítico', value: criticalStock.toString(), icon: Icons.warning_amber_rounded, color: stockLowColor),
                   const SizedBox(width: 8),
-                  _buildSummaryWidget(title: 'Valor total', value: '\$${totalStockValue.toStringAsFixed(2)}', icon: Icons.attach_money, color: stockOkColor),
+                  _buildSummaryWidget(title: 'Valor', value: '\$${totalStockValue.toStringAsFixed(0)}', icon: Icons.attach_money, color: stockOkColor),
                 ],
               );
             },
@@ -887,11 +920,13 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
           ),
         ],
       ),
+      ),
     );
   }
   
   Widget _buildClientesTab() {
-    return Padding(
+  return AnimatedBackground(
+    child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Column(
         children: [
@@ -900,33 +935,49 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
             decoration: InputDecoration(
               hintText: 'Buscar cliente...',
               prefixIcon: const Icon(Icons.search, color: primaryColor),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Colors.white.withOpacity(0.20),
               contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
             ),
             onChanged: (_) => setState(() {}),
           ),
+
           const SizedBox(height: 12),
+
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: clientesRef().snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
                 final docs = snapshot.data!.docs.where((d) {
                   final nombre = (d['nombre'] ?? '').toString().toLowerCase();
                   return nombre.contains(buscarClienteCtrl.text.toLowerCase());
                 }).toList();
-                if (docs.isEmpty) return Center(child: Text('No hay clientes', style: GoogleFonts.poppins(color: Colors.grey[600])));
+
+                if (docs.isEmpty) {
+                  return Center(
+                    child: Text('No hay clientes', style: GoogleFonts.poppins(color: Colors.grey[600])),
+                  );
+                }
+
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, i) {
                     final d = docs[i];
                     final data = d.data() as Map<String, dynamic>;
+
+                    // Función envoltorio para editar
                     void onEdit(String id, Map<String, dynamic> data) {
-                    print("Editar cliente $id");
-                    print(data);
-                  }
+                        _editarCliente(id, data);
+                    }
+
                     return Card(
                       elevation: 3,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -935,7 +986,6 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
                         padding: const EdgeInsets.all(14),
                         child: Row(
                           children: [
-                            // Ícono
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
@@ -945,45 +995,27 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
                               child: Icon(Icons.person_outline, color: primaryColor, size: 28),
                             ),
                             const SizedBox(width: 14),
-
-                            // Información del cliente
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     data['nombre'] ?? 'Sin nombre',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
-
                                   const SizedBox(height: 4),
-
                                   Text(
                                     data['direccion'] ?? 'Sin dirección',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      color: Colors.grey[700],
-                                    ),
+                                    style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
                                   ),
-
                                   const SizedBox(height: 6),
-
                                   Text(
                                     "Garrafones RN: ${data['garrafonesRN'] ?? 0}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      color: secondaryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    style: GoogleFonts.poppins(fontSize: 13, color: secondaryColor, fontWeight: FontWeight.w600),
                                   ),
                                 ],
                               ),
                             ),
-
-                            // Botón editar
                             IconButton(
                               icon: const Icon(Icons.edit_outlined),
                               color: primaryColor,
@@ -1000,128 +1032,343 @@ final TextEditingController buscarClienteCtrl = TextEditingController();
           ),
         ],
       ),
+    ),
+  );
+}
+
+
+
+Widget _buildMovimientosTab() {
+  return Stack(
+    children: [
+      Positioned.fill(
+        child: AnimatedBackground(child: const SizedBox()),
+      ),
+
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Column(
+          children: [
+            Text(
+              '📝 Registrar Venta/Movimiento (Admin)',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+
+            Card(
+              elevation: 2,
+              color: Colors.white.withOpacity(0.85),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  children: [
+                    StreamBuilder<QuerySnapshot>(
+                      stream: clientesRef().snapshots(),
+                      builder: (context, snapC) {
+                        if (!snapC.hasData) return const SizedBox();
+                        final clientes = snapC.data!.docs;
+                        final items = clientes.map((c) => (c['nombre'] ?? '').toString()).toList();
+
+                        return DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(labelText: 'Cliente', border: OutlineInputBorder()),
+                          isExpanded: true,
+                          hint: const Text('Seleccionar cliente'),
+                          value: clienteSeleccionado,
+                          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                          onChanged: (v) => setState(() => clienteSeleccionado = v),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    StreamBuilder<QuerySnapshot>(
+                      stream: productosRef().snapshots(),
+                      builder: (context, snapP) {
+                        if (!snapP.hasData) return const SizedBox();
+                        final productos = snapP.data!.docs;
+                        final items = productos.map((p) => (p['nombre'] ?? '').toString()).toList();
+
+                        return DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(labelText: 'Producto', border: OutlineInputBorder()),
+                          isExpanded: true,
+                          hint: const Text('Seleccionar producto'),
+                          value: productoSeleccionado,
+                          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                          onChanged: (v) => setState(() => productoSeleccionado = v),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Row(
+                      children: [
+                        Expanded(child: TextField(controller: movCantidadCtrl, decoration: const InputDecoration(labelText: 'Cantidad', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                        const SizedBox(width: 8),
+                        Expanded(child: TextField(controller: movPrecioCtrl, decoration: const InputDecoration(labelText: 'Precio (opc)', prefixText: '\$', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(labelText: 'Método de Pago', border: OutlineInputBorder()),
+                      value: movMetodoPago,
+                      items: const [
+                        DropdownMenuItem(value: 'Efectivo', child: Text('Efectivo')),
+                        DropdownMenuItem(value: 'Tarjeta', child: Text('Tarjeta')),
+                      ],
+                      onChanged: (v) => setState(() => movMetodoPago = v ?? 'Efectivo'),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Row(children: [
+                      Text('Origen:', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 12),
+                      ChoiceChip(
+                        label: const Text('Ventanilla'),
+                        selected: movOrigen == 'ventanilla',
+                        selectedColor: primaryColor.withOpacity(0.12),
+                        onSelected: (_) => setState(() => movOrigen = 'ventanilla'),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('Repartidor'),
+                        selected: movOrigen == 'repartidor',
+                        selectedColor: primaryColor.withOpacity(0.12),
+                        onSelected: (_) => setState(() => movOrigen = 'repartidor'),
+                      ),
+                    ]),
+
+                    const SizedBox(height: 12),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.save_outlined, color: Colors.transparent),
+                        label: Text('Registrar Movimiento', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: secondaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: _registrarMovimientoDesdeAdmin,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+            
+            // --- BOTÓN NUEVO: VER HISTORIAL DE CORTES ---
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.assessment_outlined, color: Colors.white),
+                label: Text('Ver Historial de Cortes (Reportes)', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: reportColor, // Color Verde
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 3,
+                ),
+                onPressed: () {
+                   Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdminCortesScreen(empresaCodigo: widget.empresaCodigo),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.delivery_dining),
+                    label: Text('Ver Repartidor', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: primaryColor,
+                      backgroundColor: primaryColor.withOpacity(0.08),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => MovimientosRepartidorPage(empresaCodigo: widget.empresaCodigo)));
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.store),
+                    label: Text('Ver Ventanilla', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: secondaryColor,
+                      backgroundColor: secondaryColor.withOpacity(0.08),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => MovimientosVentanillaPage(empresaCodigo: widget.empresaCodigo)));
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+}
+
+
+// ============================================================================
+// CLASE PARA VER EL HISTORIAL DE CORTES (PANTALLA NUEVA)
+// ============================================================================
+
+class AdminCortesScreen extends StatelessWidget {
+  final String empresaCodigo;
+
+  const AdminCortesScreen({super.key, required this.empresaCodigo});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA), // Mismo fondo claro
+      appBar: AppBar(
+        title: Text("Historial de Cortes", style: GoogleFonts.poppins(color: Colors.black87, fontWeight: FontWeight.w700)),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        iconTheme: const IconThemeData(color: Colors.black87),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('empresas')
+            .doc(empresaCodigo)
+            .collection('cortes_diarios')
+            .orderBy('fecha', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          
+          var docs = snapshot.data!.docs;
+
+          if (docs.isEmpty) {
+            return Center(child: Text("No hay cortes registrados", style: GoogleFonts.poppins(color: Colors.grey)));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              var data = docs[index].data() as Map<String, dynamic>;
+              String fecha = data['fecha_string'] ?? "Fecha desconocida";
+              double total = (data['total_dinero'] ?? 0).toDouble();
+              int garrafones = (data['total_garrafones'] ?? 0).toInt();
+              List<dynamic> detalles = data['detalles'] ?? [];
+
+              return Card(
+                elevation: 3,
+                margin: const EdgeInsets.only(bottom: 15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: ExpansionTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2E7D32).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.calendar_today, color: Color(0xFF2E7D32)),
+                  ),
+                  title: Text(
+                    "Corte: $fecha",
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    "Total: \$$total | Garrafones: $garrafones",
+                    style: GoogleFonts.poppins(color: Colors.grey[700]),
+                  ),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                      ),
+                      child: Column(
+                        children: [
+                          // Encabezados tabla
+                          Row(
+                            children: [
+                              Expanded(flex: 2, child: _headerText("Cliente")),
+                              Expanded(flex: 2, child: _headerText("Prod.")),
+                              Expanded(child: _headerText("Cant.")),
+                              Expanded(child: _headerText("Total")),
+                            ],
+                          ),
+                          const Divider(),
+                          // Detalles
+                          if (detalles.isEmpty) 
+                            Padding(padding: const EdgeInsets.all(8), child: Text("Sin detalles", style: GoogleFonts.poppins(fontSize: 12))),
+                            
+                          ...detalles.map((d) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4.0),
+                              child: Row(
+                                children: [
+                                  Expanded(flex: 2, child: _bodyText(d['cliente'] ?? '-')),
+                                  Expanded(flex: 2, child: _bodyText(d['producto'] ?? '-')),
+                                  Expanded(child: _bodyText("${d['cantidad'] ?? 0}")),
+                                  Expanded(child: _bodyText("\$${d['precio'] ?? 0}")),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          const Divider(),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  "TOTAL CIERRE: \$$total",
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.bold, 
+                                      color: const Color(0xFF2E7D32),
+                                      fontSize: 16
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
+                    )
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildMovimientosTab() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListView(
-        children: [
-          Text('📝 Registrar Venta/Movimiento (Admin)', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 16)),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                children: [
-                  StreamBuilder<QuerySnapshot>(
-                    stream: clientesRef().snapshots(),
-                    builder: (context, snapC) {
-                      if (!snapC.hasData) return const SizedBox();
-                      final clientes = snapC.data!.docs;
-                      final items = clientes.map((c) => (c['nombre'] ?? '').toString()).toList();
-                      return DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(labelText: 'Cliente', border: OutlineInputBorder()),
-                        isExpanded: true,
-                        hint: const Text('Seleccionar cliente'),
-                        value: clienteSeleccionado,
-                        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                        onChanged: (v) => setState(() => clienteSeleccionado = v),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: productosRef().snapshots(),
-                    builder: (context, snapP) {
-                      if (!snapP.hasData) return const SizedBox();
-                      final productos = snapP.data!.docs;
-                      final items = productos.map((p) => (p['nombre'] ?? '').toString()).toList();
-                      return DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(labelText: 'Producto', border: OutlineInputBorder()),
-                        isExpanded: true,
-                        hint: const Text('Seleccionar producto'),
-                        value: productoSeleccionado,
-                        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                        onChanged: (v) => setState(() => productoSeleccionado = v),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(controller: movCantidadCtrl, decoration: const InputDecoration(labelText: 'Cantidad', border: OutlineInputBorder()), keyboardType: TextInputType.number),
-                  const SizedBox(height: 10),
-                  TextField(controller: movPrecioCtrl, decoration: const InputDecoration(labelText: 'Precio unitario (opcional)', border: OutlineInputBorder(), prefixText: '\$'), keyboardType: TextInputType.number),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Método de Pago', border: OutlineInputBorder()),
-                    value: movMetodoPago,
-                    items: const [
-                      DropdownMenuItem(value: 'Efectivo', child: Text('Efectivo')),
-                      DropdownMenuItem(value: 'Tarjeta', child: Text('Tarjeta')),
-                    ],
-                    onChanged: (v) => setState(() => movMetodoPago = v ?? 'Efectivo'),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    Text('Origen:', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 12),
-                    ChoiceChip(label: const Text('Ventanilla'), selected: movOrigen == 'ventanilla', selectedColor: primaryColor.withOpacity(0.12), onSelected: (_) => setState(() => movOrigen = 'ventanilla')),
-                    const SizedBox(width: 8),
-                    ChoiceChip(label: const Text('Repartidor'), selected: movOrigen == 'repartidor', selectedColor: primaryColor.withOpacity(0.12), onSelected: (_) => setState(() => movOrigen = 'repartidor')),
-                  ]),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.save_outlined, color: Colors.white),
-                      label: Text('Registrar Movimiento', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700)),
-                      style: ElevatedButton.styleFrom(backgroundColor: secondaryColor, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                      onPressed: _registrarMovimientoDesdeAdmin,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.delivery_dining),
-                          label: Text('Ver Repartidor', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: primaryColor,
-                            backgroundColor: primaryColor.withOpacity(0.08),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => MovimientosRepartidorPage(empresaCodigo: widget.empresaCodigo)));
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.store),
-                          label: Text('Ver Ventanilla', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: secondaryColor,
-                            backgroundColor: secondaryColor.withOpacity(0.08),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => MovimientosVentanillaPage(empresaCodigo: widget.empresaCodigo)));
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  Widget _headerText(String text) {
+    return Text(text, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey[600]));
+  }
+
+  Widget _bodyText(String text) {
+    return Text(text, style: GoogleFonts.poppins(fontSize: 12));
   }
 }

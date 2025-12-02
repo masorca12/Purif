@@ -2,8 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/gestures.dart';
 import 'login_screen.dart';
+import '../widgets/animated_background.dart'; // AJUSTA LA RUTA A LA TUYA
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,21 +24,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _selectedRole = 'repartidor';
   bool _loading = false;
 
-  // Generar código
   String _generarCodigoEmpresa() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = Random();
     return List.generate(6, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
-  // REGISTRO
   Future<void> _registerUser() async {
     if (_nombreCtrl.text.isEmpty ||
         _apellidoCtrl.text.isEmpty ||
         _emailCtrl.text.isEmpty ||
         _passCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, completa todos los campos.')),
+        const SnackBar(content: Text('Por favor completa todos los campos.')),
       );
       return;
     }
@@ -45,7 +44,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _loading = true);
 
     try {
-      // CREAR USUARIO AUTH
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text.trim(),
@@ -58,9 +56,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final apellido = _apellidoCtrl.text.trim();
       final email = _emailCtrl.text.trim();
 
-      // ------------------------------------------
-      // ADMIN → CREA EMPRESA + SUBCOLECCIONES
-      // ------------------------------------------
       if (_selectedRole == 'admin') {
         final empresaNombre = _empresaCtrl.text.trim();
 
@@ -68,7 +63,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Debes ingresar el nombre de la empresa.')),
           );
-
           await FirebaseAuth.instance.currentUser?.delete().catchError((_) {});
           setState(() => _loading = false);
           return;
@@ -78,7 +72,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final empresaRef =
             FirebaseFirestore.instance.collection('empresas').doc(codigoEmpresa);
 
-        // 1. Crear empresa
         await empresaRef.set({
           'nombre': empresaNombre,
           'codigo': codigoEmpresa,
@@ -86,7 +79,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        // 2. Crear subcolecciones iniciales
         await empresaRef.collection('productos').doc('default').set({
           'init': true,
           'createdAt': FieldValue.serverTimestamp(),
@@ -107,7 +99,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        // 3. Crear usuario admin
         await usersRef.doc(uid).set({
           'nombre': nombre,
           'apellido': apellido,
@@ -117,19 +108,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'empresaNombre': empresaNombre,
           'createdAt': FieldValue.serverTimestamp(),
         });
-      }
-
-      // ------------------------------------------
-      // EMPLEADOS (repartidor / ventanilla)
-      // ------------------------------------------
-      else {
+      } else {
         final codigo = _codigoCtrl.text.trim();
 
         if (codigo.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Debes ingresar el código de la empresa.')),
           );
-
           await FirebaseAuth.instance.currentUser?.delete().catchError((_) {});
           setState(() => _loading = false);
           return;
@@ -144,7 +129,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('El código de empresa no es válido.')),
           );
-
           await FirebaseAuth.instance.currentUser?.delete().catchError((_) {});
           setState(() => _loading = false);
           return;
@@ -166,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ERROR FIREBASE AUTH: ${e.code} — ${e.message}')),
+        SnackBar(content: Text('ERROR: ${e.code} — ${e.message}')),
       );
     } finally {
       setState(() => _loading = false);
@@ -174,141 +158,170 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   @override
-  void dispose() {
-    _nombreCtrl.dispose();
-    _apellidoCtrl.dispose();
-    _emailCtrl.dispose();
-    _passCtrl.dispose();
-    _empresaCtrl.dispose();
-    _codigoCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FF),
-      appBar: AppBar(
-        title: Text('Crear cuenta', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        elevation: 0,
+    return AnimatedBackground(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: ListView(
-          children: [
-            const SizedBox(height: 24),
-            TextField(
-              controller: _nombreCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _apellidoCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Apellido',
-                prefixIcon: Icon(Icons.person),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Correo electrónico',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Contraseña',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: ListView(
               children: [
-                Text('Rol:', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-                const SizedBox(width: 8),
-                DropdownButton<String>(
-                  value: _selectedRole,
-                  items: const [
-                    DropdownMenuItem(value: 'repartidor', child: Text('Repartidor')),
-                    DropdownMenuItem(value: 'ventanilla', child: Text('Ventanilla')),
-                    DropdownMenuItem(value: 'admin', child: Text('Administrador')),
-                  ],
-                  onChanged: (v) => setState(() => _selectedRole = v!),
-                ),
-              ],
-            ),
+                const SizedBox(height: 20),
 
-            const SizedBox(height: 16),
-
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _selectedRole == 'admin'
-                  ? TextField(
-                      key: const ValueKey('empresa'),
-                      controller: _empresaCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre de la empresa',
-                        prefixIcon: Icon(Icons.business_outlined),
-                      ),
-                    )
-                  : TextField(
-                      key: const ValueKey('codigo'),
-                      controller: _codigoCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Código de la empresa',
-                        prefixIcon: Icon(Icons.vpn_key_outlined),
-                      ),
-                    ),
-            ),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _registerUser,
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  backgroundColor: const Color(0xFF0066FF),
-                ),
-                child: _loading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text('Crear cuenta',
-                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text("¿Ya tienes una cuenta?"),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                        context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                  },
-                  child: const Text(
-                    'Inicia sesión',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                // --- TÍTULO ---
+                const Text(
+                  "Crear Cuenta",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
+
+                const SizedBox(height: 12),
+
+                const Text(
+                  "Regístrate para continuar.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                _input("Nombre", _nombreCtrl),
+                const SizedBox(height: 16),
+
+                _input("Apellido", _apellidoCtrl),
+                const SizedBox(height: 16),
+
+                _input("Correo electrónico", _emailCtrl,
+                    keyboard: TextInputType.emailAddress),
+                const SizedBox(height: 16),
+
+                _input("Contraseña", _passCtrl, obscure: true),
+                const SizedBox(height: 16),
+
+                // ------------------- ROL -------------------
+                Row(
+                  children: [
+                    const Text(
+                      "Rol:",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    const SizedBox(width: 12),
+                    DropdownButton<String>(
+                      dropdownColor: Colors.black87,
+                      value: _selectedRole,
+                      style: const TextStyle(color: Colors.white),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'repartidor',
+                            child: Text('Repartidor', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(
+                            value: 'ventanilla',
+                            child: Text('Ventanilla', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(
+                            value: 'admin',
+                            child: Text('Administrador', style: TextStyle(color: Colors.white))),
+                      ],
+                      onChanged: (v) => setState(() => _selectedRole = v!),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: _selectedRole == "admin"
+                      ? _input("Nombre de la empresa", _empresaCtrl)
+                      : _input("Código de la empresa", _codigoCtrl),
+                ),
+
+                const SizedBox(height: 32),
+
+                // ---------------- BOTÓN ----------------
+                ElevatedButton(
+                  onPressed: _loading ? null : _registerUser,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : const Text("Crear cuenta", style: TextStyle(fontSize: 16)),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ---- YA TIENES CUENTA ----
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("¿Ya tienes una cuenta?",
+                        style: TextStyle(color: Colors.white)),
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      ),
+                      child: const Text(
+                        "Inicia sesión",
+                        style: TextStyle(
+                          color: Color.fromARGB(255, 2, 43, 76),
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+
+                const SizedBox(height: 20),
               ],
             ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ======================================================
+  // WIDGET INPUT ESTILO LOGIN
+  // ======================================================
+  Widget _input(String hint, TextEditingController ctrl,
+      {bool obscure = false, TextInputType keyboard = TextInputType.text}) {
+    return TextField(
+      controller: ctrl,
+      obscureText: obscure,
+      keyboardType: keyboard,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white70),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.white, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.white, width: 2),
         ),
       ),
     );

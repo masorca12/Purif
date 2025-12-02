@@ -133,8 +133,8 @@ class _MovimientosRepartidorPageState extends State<MovimientosRepartidorPage> {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 final docs = snapshot.data!.docs.where((d) {
                   final m = d.data() as Map<String, dynamic>;
-                  final cliente = (m['cliente'] ?? '').toString().toLowerCase();
-                  final producto = (m['producto'] ?? '').toString().toLowerCase();
+                  final cliente = (m['Clientes'] ?? '').toString().toLowerCase();
+                  final producto = (m['productos'] ?? '').toString().toLowerCase();
                   final q = buscarCtrl.text.toLowerCase();
                   return cliente.contains(q) || producto.contains(q);
                 }).toList();

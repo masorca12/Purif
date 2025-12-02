@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../widgets/animated_background.dart';
 
 class RepartidorHome extends StatefulWidget {
   final String empresaCodigo;
@@ -14,6 +15,9 @@ class RepartidorHome extends StatefulWidget {
 class _RepartidorHomeState extends State<RepartidorHome>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  
+  // Variable para el buscador
+  String _searchQuery = "";
 
   // Campos del modal de pedidos
   String? selectedClienteNombre;
@@ -27,64 +31,65 @@ class _RepartidorHomeState extends State<RepartidorHome>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this); // ⭐ 3 SECCIONES
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,  // 🚀 Oculta la flecha de atrás
-        backgroundColor: Colors.white,
-        elevation: 2,
-        title: Text(
-          "Panel de Repartidor",
-          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              Navigator.of(context).pushReplacementNamed('/login'); 
-              // ⬆ Cambia /login por la ruta de tu login si tienes otra
-            },
+    return AnimatedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          backgroundColor: Colors.transparent,
+          elevation: 0, // Quitamos elevación para que se vea más limpio como en la imagen 1
+          title: Text(
+            "Panel de Repartidor",
+            style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
-        ],
-        bottom: TabBar(
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout, color: Colors.redAccent),
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                Navigator.of(context).pushReplacementNamed('/login');
+              },
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: Colors.blueAccent,
+            unselectedLabelColor: Colors.black54,
+            indicatorColor: Colors.blueAccent,
+            tabs: const [
+              Tab(icon: Icon(Icons.swap_horiz), text: "Movimientos"),
+              Tab(icon: Icon(Icons.people), text: "Clientes"),
+              Tab(icon: Icon(Icons.shopping_cart), text: "Pedidos"),
+            ],
+          ),
+        ),
+
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: Colors.blueAccent,
+          child: const Icon(Icons.add),
+          onPressed: () {
+            if (_tabController.index == 0) {
+              _showAddMovimientoModal(context);
+            } else if (_tabController.index == 2) {
+              _showAddPedidoModal(context);
+            }
+            // Nota: Si quieres agregar clientes, añade la condición para index == 1
+          },
+        ),
+
+        body: TabBarView(
           controller: _tabController,
-          labelColor: Colors.blueAccent,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.blueAccent,
-          tabs: const [
-            Tab(icon: Icon(Icons.swap_horiz), text: "Movimientos"), 
-            Tab(icon: Icon(Icons.people), text: "Clientes"),
-            Tab(icon: Icon(Icons.shopping_cart), text: "Pedidos"),
+          children: [
+            _buildMovimientosTab(),
+            _buildClientesTab(), // ESTA ES LA QUE MODIFICAMOS
+            _buildPedidosTab(),
           ],
         ),
-      ),
-
-      /// BOTÓN FLOTANTE — Cambia según la pestaña
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blueAccent,
-        child: const Icon(Icons.add),
-        onPressed: () {
-          if (_tabController.index == 0) {
-            _showAddMovimientoModal(context);
-          } else if (_tabController.index == 2) {
-            _showAddPedidoModal(context);
-          }
-        },
-      ),
-
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildMovimientosTab(),
-          _buildClientesTab(),
-          _buildPedidosTab(),
-        ],
       ),
     );
   }
@@ -157,46 +162,157 @@ class _RepartidorHomeState extends State<RepartidorHome>
   );
 }
 
+
   //////////////////////////////////////////////////////////////////////////////
   ///
-  ///                           🔵 2. CLIENTES
+  ///                           🔵 2. CLIENTES (DISEÑO TIPO IMAGEN 1)
   ///
   //////////////////////////////////////////////////////////////////////////////
 
   Widget _buildClientesTab() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('empresas')
-          .doc(widget.empresaCodigo)
-          .collection('Clientes')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-        var docs = snapshot.data!.docs;
-        if (docs.isEmpty) return const Center(child: Text("No hay clientes registrados"));
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: docs.length,
-          itemBuilder: (context, i) {
-            var data = docs[i].data() as Map<String, dynamic>;
-            return Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: ListTile(
-                title: Text(data['nombre'], style: GoogleFonts.poppins(fontSize: 16)),
-                subtitle: Text(data['direccion'] ?? "Sin dirección",
-                    style: GoogleFonts.poppins()),
+    return Column(
+      children: [
+        // --- BARRA DE BÚSQUEDA (Como en la Imagen 1) ---
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2), // Fondo semitransparente
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withOpacity(0.3))
+            ),
+            child: TextField(
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+              style: GoogleFonts.poppins(color: Colors.black87),
+              decoration: InputDecoration(
+                hintText: "Buscar cliente...",
+                hintStyle: GoogleFonts.poppins(color: Colors.black54),
+                prefixIcon: const Icon(Icons.search, color: Colors.blueAccent),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+        ),
+
+        // --- LISTA DE CLIENTES ---
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('empresas')
+                .doc(widget.empresaCodigo)
+                .collection('Clientes') // Verifica si es 'Clientes' o 'clientes' en tu DB
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+              var docs = snapshot.data!.docs;
+              
+              // Filtrado local por buscador
+              var filteredDocs = docs.where((doc) {
+                var data = doc.data() as Map<String, dynamic>;
+                String nombre = data['nombre'].toString().toLowerCase();
+                return nombre.contains(_searchQuery);
+              }).toList();
+
+              if (filteredDocs.isEmpty) {
+                return Center(
+                  child: Text("No se encontraron clientes", 
+                    style: GoogleFonts.poppins(color: Colors.black54))
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: filteredDocs.length,
+                itemBuilder: (context, i) {
+                  var data = filteredDocs[i].data() as Map<String, dynamic>;
+                  // Datos simulados para igualar la imagen 1 si no existen en tu DB
+                  int garrafonesRN = data['garrafonesRN'] ?? 0; 
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15), // Bordes redondeados como la imagen 1
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      child: Row(
+                        children: [
+                          // 1. EL ÍCONO CUADRADO AZUL (Avatar)
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F0FE), // Azul muy clarito (fondo del icono)
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.person_outline,
+                              color: Colors.blueAccent,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+
+                          // 2. TEXTOS (Nombre, Dirección, Garrafones)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data['nombre'],
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  data['direccion'] ?? "Sin dirección",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Garrafones RN: $garrafonesRN", // Texto azul extra
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blueAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
-
-  //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
   ///
   ///                          🔵 3. PEDIDOS (AGREGAR/EDITAR)
   ///
@@ -653,3 +769,15 @@ class MovimientosWidget extends StatelessWidget {
     );
   }
 }
+
+  InputDecoration _inputStyle() {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    );
+  }

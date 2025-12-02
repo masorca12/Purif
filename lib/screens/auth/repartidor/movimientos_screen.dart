@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'movimiento_item.dart';
+import 'movimientoitem.dart';
 
 class MovimientosScreen extends StatelessWidget {
   final String empresaCodigo;
