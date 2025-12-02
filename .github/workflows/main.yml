@@ -1,0 +1,49 @@
+name: Generar APK (Firebase)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build_apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # --- CONFIGURACIÓN BÁSICA ---
+      - name: Descargar código
+        uses: actions/checkout@v3
+
+      - name: Configurar Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0' # Asegúrate que coincida con tu versión
+          channel: 'stable'
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # --- TESTS (Opcional, pero recomendado) ---
+      - name: Analizar código
+        run: flutter analyze
+      
+      - name: Tests Unitarios
+        run: flutter test
+
+      # --- GENERACIÓN DEL APK ---
+      - name: Generar APK (Release)
+        # Al usar Firebase, Flutter leerá automáticamente tu google-services.json
+        run: flutter build apk --release
+
+      # --- GUARDAR EL ARCHIVO ---
+      - name: Subir APK a GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 5
