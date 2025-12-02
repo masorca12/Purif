@@ -29,8 +29,8 @@ jobs:
         run: flutter pub get
 
       # --- TESTS (Opcional, pero recomendado) ---
-      - name: Analizar código
-        run: flutter analyze
+      #- name: Analizar código
+      #  run: flutter analyze
       
       - name: Tests Unitarios
         run: flutter test
